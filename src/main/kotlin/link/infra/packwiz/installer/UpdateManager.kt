@@ -387,21 +387,23 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 			}
 
 			val exDetails = task.exceptionDetails
+			val counter = "[${i + 1}/${tasks.size}]"
 			val progress = if (exDetails != null) {
-				"Failed to download ${exDetails.name}: ${exDetails.exception.message}"
+				"$counter Failed to download ${exDetails.name}: ${exDetails.exception.message}"
 			} else {
 				when (task.completionStatus) {
-					DownloadTask.CompletionStatus.INCOMPLETE -> "${task.name} pending (you should never see this...)"
-					DownloadTask.CompletionStatus.DOWNLOADED -> "Downloaded ${task.name}"
-					DownloadTask.CompletionStatus.ALREADY_EXISTS_CACHED -> "${task.name} already exists (cached)"
-					DownloadTask.CompletionStatus.ALREADY_EXISTS_VALIDATED -> "${task.name} already exists (validated)"
-					DownloadTask.CompletionStatus.SKIPPED_DISABLED -> "Skipped ${task.name} (disabled)"
-					DownloadTask.CompletionStatus.SKIPPED_WRONG_SIDE -> "Skipped ${task.name} (wrong side)"
-					DownloadTask.CompletionStatus.DELETED_DISABLED -> "Deleted ${task.name} (disabled)"
-					DownloadTask.CompletionStatus.DELETED_WRONG_SIDE -> "Deleted ${task.name} (wrong side)"
+					DownloadTask.CompletionStatus.INCOMPLETE -> "$counter ${task.name} pending (you should never see this...)"
+					DownloadTask.CompletionStatus.DOWNLOADED -> "$counter Downloaded ${task.name}"
+					DownloadTask.CompletionStatus.ALREADY_EXISTS_CACHED -> "$counter ${task.name} already exists (cached)"
+					DownloadTask.CompletionStatus.ALREADY_EXISTS_VALIDATED -> "$counter ${task.name} already exists (validated)"
+					DownloadTask.CompletionStatus.SKIPPED_DISABLED -> "$counter Skipped ${task.name} (disabled)"
+					DownloadTask.CompletionStatus.SKIPPED_WRONG_SIDE -> "$counter Skipped ${task.name} (wrong side)"
+					DownloadTask.CompletionStatus.DELETED_DISABLED -> "$counter Deleted ${task.name} (disabled)"
+					DownloadTask.CompletionStatus.DELETED_WRONG_SIDE -> "$counter Deleted ${task.name} (wrong side)"
 				}
 			}
 			ui.submitProgress(InstallProgress(progress, i + 1, tasks.size))
+
 
 			if (ui.cancelButtonPressed) { // Stop all tasks, don't launch the game (it's in an invalid state!)
 				// TODO: close client holder in more places?
