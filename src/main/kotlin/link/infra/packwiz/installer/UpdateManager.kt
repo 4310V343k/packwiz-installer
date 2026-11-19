@@ -293,13 +293,13 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 			f.updateFromCache(file)
 		}
 
-
 		if (ui.cancelButtonPressed) {
 			showCancellationDialog()
 			return
 		}
 
 		// Let's hope downloadMetadata is a pure function!!!
+		ui.submitProgress(InstallProgress("Downloading metadata..."))
 		tasks.parallelStream().forEach { f -> f.downloadMetadata(clientHolder) }
 
 		val failedTaskDetails = tasks.asSequence().map(DownloadTask::exceptionDetails).filterNotNull().toList()
