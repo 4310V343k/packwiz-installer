@@ -247,11 +247,13 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 		}
 
 		ui.submitProgress(InstallProgress("Checking local files..."))
+		val indexPaths = indexFile.files.mapTo(HashSet(indexFile.files.size)) { it.file.rebase(opts.packFolder) }
+
 		val it: MutableIterator<Map.Entry<PackwizFilePath, ManifestFile.File>> = manifest.cachedFiles.entries.iterator()
 		while (it.hasNext()) {
 			val (uri, file) = it.next()
 			if (file.cachedLocation != null) {
-				if (indexFile.files.none { it.file.rebase(opts.packFolder) == uri }) { // File has been removed from the index
+				if (uri !in indexPaths) { // File has been removed from the index
 					try {
 						Files.deleteIfExists(file.cachedLocation!!.nioPath)
 					} catch (e: IOException) {
@@ -269,7 +271,6 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 		}
 		ui.submitProgress(InstallProgress("Comparing new files..."))
 
-		// TODO: progress bar?
 		if (indexFile.files.isEmpty()) {
 			Log.warn("Index is empty!")
 		}
@@ -277,19 +278,21 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 		if (invalidateAll) {
 			Log.info("Side changed, invalidating all mods")
 		}
-		tasks.forEach{ f ->
+		tasks.parallelStream().forEach { f ->	
 			// TODO: should linkedfile be checked as well? should this be done in the download section?
+			val rebasedPath = f.metadata.file.rebase(opts.packFolder)
 			if (invalidateAll) {
 				f.invalidate()
-			} else if (invalidatedFiles.contains(f.metadata.file.rebase(opts.packFolder))) {
+			} else if (invalidatedFiles.contains(rebasedPath)) {
 				f.invalidate()
 			}
-			val file = manifest.cachedFiles[f.metadata.file.rebase(opts.packFolder)]
+			val file = manifest.cachedFiles[rebasedPath]
 			// Ensure the file can be reverted later if necessary - the DownloadTask modifies the file so if it fails we need the old version back
 			file?.backup()
 			// If it is null, the DownloadTask will make a new empty cachedFile
 			f.updateFromCache(file)
 		}
+
 
 		if (ui.cancelButtonPressed) {
 			showCancellationDialog()
