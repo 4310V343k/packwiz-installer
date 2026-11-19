@@ -97,6 +97,7 @@ fun resolveCfMetadata(mods: List<IndexFile.File>, packFolder: PackwizFilePath, c
 				.addPathSegments("files/$part1/$part2")
 				.addPathSegment(file.fileName)
 				.build()
+				.toString()
 		}
 
 		try {
