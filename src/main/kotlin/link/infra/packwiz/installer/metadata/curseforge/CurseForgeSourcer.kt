@@ -24,7 +24,7 @@ private class GetFilesResponse {
 	class CfFile {
 		var id = 0
 		var modId = 0
-        val fileName: String?, // <-- добавить эту строку
+        val fileName: String = null
 		var downloadUrl: String? = null
 	}
 	val data = mutableListOf<CfFile>()
