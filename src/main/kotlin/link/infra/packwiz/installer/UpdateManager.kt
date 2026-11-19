@@ -358,7 +358,7 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 		}
 
 		// TODO: different thread pool type?
-		val threadPool = Executors.newFixedThreadPool(10)
+		val threadPool = Executors.newFixedThreadPool(32)
 		val completionService: CompletionService<DownloadTask> = ExecutorCompletionService(threadPool)
 		tasks.forEach { t ->
 			completionService.submit {
