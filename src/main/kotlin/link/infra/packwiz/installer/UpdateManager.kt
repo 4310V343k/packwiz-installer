@@ -298,9 +298,18 @@ class UpdateManager internal constructor(private val opts: Options, val ui: IUse
 			return
 		}
 
+		val metaCounter = java.util.concurrent.atomic.AtomicInteger(0)
+		val totalTasks = tasks.size
+		ui.submitProgress(InstallProgress("[0/$totalTasks] Downloading metadata...", 0, totalTasks))
+
 		// Let's hope downloadMetadata is a pure function!!!
-		ui.submitProgress(InstallProgress("Downloading metadata..."))
-		tasks.parallelStream().forEach { f -> f.downloadMetadata(clientHolder) }
+		tasks.parallelStream().forEach { f ->
+			f.downloadMetadata(clientHolder)
+			val current = metaCounter.incrementAndGet()
+			if (current % 50 == 0 || current == totalTasks) {
+				ui.submitProgress(InstallProgress("[$current/$totalTasks] Downloading metadata (${f.name})...", current, totalTasks))
+			}
+		}
 
 		val failedTaskDetails = tasks.asSequence().map(DownloadTask::exceptionDetails).filterNotNull().toList()
 		if (failedTaskDetails.isNotEmpty()) {
