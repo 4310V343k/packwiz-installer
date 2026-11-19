@@ -1,6 +1,8 @@
 package link.infra.packwiz.installer.target
 
 import link.infra.packwiz.installer.util.Log
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okio.FileSystem
@@ -12,40 +14,49 @@ class ClientHolder {
 	private val retryTimes = arrayOf(15, 60)
 
 	// TODO: a button to increase timeouts temporarily when retrying? manual retry button?
-	val okHttpClient by lazy { OkHttpClient.Builder()
-		// Retry requests according to retryTimes list
-		.addInterceptor {
-			val req = it.request()
+	val okHttpClient by lazy {
+		val dispatcher = Dispatcher().apply {
+			maxRequests = 64
+			maxRequestsPerHost = 32
+		}
 
-			var lastException: SocketTimeoutException? = null
-			var res: Response? = null
+		OkHttpClient.Builder()
+			.dispatcher(dispatcher)
+			.connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
+			// Retry requests according to retryTimes list
+			.addInterceptor {
+				val req = it.request()
 
-			try {
-				res = it.proceed(req)
-			} catch (e: SocketTimeoutException) {
-				lastException = e
-			}
+				var lastException: SocketTimeoutException? = null
+				var res: Response? = null
 
-			var tryCount = 0
-			while (res == null && tryCount < retryTimes.size) {
-				Log.info("OkHttp connection to ${req.url} timed out; retrying... (${tryCount + 1}/${retryTimes.size})")
-
-				val longerTimeoutChain = it
-					.withConnectTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
-					.withReadTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
-					.withWriteTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
 				try {
-					res = longerTimeoutChain.proceed(req)
+					res = it.proceed(req)
 				} catch (e: SocketTimeoutException) {
 					lastException = e
 				}
 
-				tryCount++
-			}
+				var tryCount = 0
+				while (res == null && tryCount < retryTimes.size) {
+					Log.info("OkHttp connection to ${req.url} timed out; retrying... (${tryCount + 1}/${retryTimes.size})")
 
-			res ?: throw lastException!!
-		}
-		.build() }
+					val longerTimeoutChain = it
+						.withConnectTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
+						.withReadTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
+						.withWriteTimeout(retryTimes[tryCount], TimeUnit.SECONDS)
+					try {
+						res = longerTimeoutChain.proceed(req)
+					} catch (e: SocketTimeoutException) {
+						lastException = e
+					}
+
+					tryCount++
+				}
+
+				res ?: throw lastException!!
+			}
+			.build()
+	}
 
 	val fileSystem = FileSystem.SYSTEM
 
