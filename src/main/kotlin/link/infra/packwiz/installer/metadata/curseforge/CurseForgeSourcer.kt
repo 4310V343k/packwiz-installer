@@ -85,18 +85,28 @@ fun resolveCfMetadata(mods: List<IndexFile.File>, packFolder: PackwizFilePath, c
 				Exception("Failed to find file from result: ID ${file.id}, Project ID ${file.modId}")))
 			continue
 		}
-		if (file.downloadUrl == null) {
-			manualDownloadMods[file.modId] = (manualDownloadMods[file.modId] ?: listOf()) + file.id
-			continue
+
+		var resolvedDownloadUrl = file.downloadUrl
+		if (resolvedDownloadUrl.isNullOrBlank()) {
+			val idStr = file.id.toString()
+			val part1 = idStr.take(4)
+			val part2 = idStr.drop(4).toIntOrNull()?.toString() ?: idStr.drop(4).trimStart('0')
+			resolvedDownloadUrl = okhttp3.HttpUrl.Builder()
+				.scheme("https")
+				.host("mediafilez.forgecdn.net")
+				.addPathSegments("files/$part1/$part2")
+				.addPathSegment(file.fileName)
+				.build()
 		}
+
 		try {
 			for (indexFile in fileIdMap[file.id]!!) {
 				indexFile.linkedFile!!.resolvedUpdateData["curseforge"] =
-					HttpUrlPath(file.downloadUrl!!.toHttpUrl())
+					HttpUrlPath(resolvedDownloadUrl.toHttpUrl())
 			}
 		} catch (e: IllegalArgumentException) {
 			failures.add(ExceptionDetails(file.id.toString(),
-				Exception("Failed to parse URL: ${file.downloadUrl} for ID ${file.id}, Project ID ${file.modId}", e)))
+				Exception("Failed to parse URL: $resolvedDownloadUrl for ID ${file.id}, Project ID ${file.modId}", e)))
 		}
 	}
 
